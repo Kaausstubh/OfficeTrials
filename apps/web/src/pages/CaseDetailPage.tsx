@@ -96,7 +96,24 @@ export const CaseDetailPage: React.FC = () => {
     try {
       setIsLoading(true);
       const res = await apiClient.get(`/cases/${caseId}`);
-      setCaseData(res.data.data);
+      if (res.data?.data) {
+        const raw = res.data.data;
+        const sanitized: Case = {
+          ...raw,
+          parties: Array.isArray(raw.parties) ? raw.parties : [],
+          hearings: Array.isArray(raw.hearings) ? raw.hearings : [],
+          documents: Array.isArray(raw.documents) ? raw.documents : [],
+          witnesses: Array.isArray(raw.witnesses) ? raw.witnesses : [],
+          exhibits: Array.isArray(raw.exhibits) ? raw.exhibits : [],
+          orders: Array.isArray(raw.orders) ? raw.orders : [],
+          assignments: Array.isArray(raw.assignments) ? raw.assignments : [],
+          bailRecords: Array.isArray(raw.bailRecords) ? raw.bailRecords : [],
+          tasks: Array.isArray(raw.tasks) ? raw.tasks : [],
+          messages: Array.isArray(raw.messages) ? raw.messages : [],
+          efilingRecords: Array.isArray(raw.efilingRecords) ? raw.efilingRecords : [],
+        };
+        setCaseData(sanitized);
+      }
     } catch (err) {
       console.error(err);
     } finally {

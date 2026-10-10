@@ -27,8 +27,9 @@ export const EFilingPage: React.FC = () => {
       setIsLoading(true);
       const res = await apiClient.get('/cases');
       const allFilings: any[] = [];
-      res.data.data.forEach((c: any) => {
-        if (c.efilingRecords) {
+      const casesList = Array.isArray(res.data?.data) ? res.data.data : [];
+      casesList.forEach((c: any) => {
+        if (Array.isArray(c?.efilingRecords)) {
           c.efilingRecords.forEach((f: any) => {
             allFilings.push({ ...f, caseNumber: c.caseNumber, caseTitle: c.title });
           });
@@ -37,17 +38,23 @@ export const EFilingPage: React.FC = () => {
       setEfilings(allFilings);
     } catch (err) {
       console.error(err);
+      setEfilings([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const filtered = efilings.filter(
-    f =>
-      f.filingTitle.toLowerCase().includes(search.toLowerCase()) ||
-      f.caseNumber.toLowerCase().includes(search.toLowerCase()) ||
-      f.portalName.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = (efilings || []).filter(f => {
+    const title = f?.filingTitle || f?.caseTitle || '';
+    const num = f?.caseNumber || '';
+    const portal = f?.portalName || '';
+    const q = search.toLowerCase();
+    return (
+      title.toLowerCase().includes(q) ||
+      num.toLowerCase().includes(q) ||
+      portal.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">

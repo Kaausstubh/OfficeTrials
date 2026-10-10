@@ -7,6 +7,14 @@ import { GlobalSearchModal } from '../search/GlobalSearchModal';
 import { NewCaseModal } from '../cases/NewCaseModal';
 import { DocumentScannerModal } from '../scanner/DocumentScannerModal';
 import { AIAssistantDrawer } from '../ai/AIAssistantDrawer';
+import { ErrorBoundary } from '../common/ErrorBoundary';
+
+export interface LayoutOutletContext {
+  onOpenNewCase: () => void;
+  onOpenScanner: () => void;
+  onOpenSearch: () => void;
+  onToggleAi: () => void;
+}
 
 export const MainLayout: React.FC = () => {
   const [showSearchModal, setShowSearchModal] = useState(false);
@@ -14,6 +22,13 @@ export const MainLayout: React.FC = () => {
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [showAiDrawer, setShowAiDrawer] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const outletContext: LayoutOutletContext = {
+    onOpenNewCase: () => setShowNewCaseModal(true),
+    onOpenScanner: () => setShowScannerModal(true),
+    onOpenSearch: () => setShowSearchModal(true),
+    onToggleAi: () => setShowAiDrawer(true),
+  };
 
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden text-slate-900 font-sans antialiased">
@@ -37,7 +52,9 @@ export const MainLayout: React.FC = () => {
 
         {/* Scrollable Page Outlet with bottom padding on mobile for the Bottom Nav */}
         <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
-          <Outlet />
+          <ErrorBoundary fallbackTitle="View Loading Notice">
+            <Outlet context={outletContext} />
+          </ErrorBoundary>
         </main>
 
         {/* Mobile Bottom Navigation Bar */}

@@ -28,10 +28,12 @@ export const ReportsPage: React.FC = () => {
         apiClient.get('/reports/case-register'),
         apiClient.get('/reports/workload'),
       ]);
-      setCaseRegister(regRes.data.data);
-      setWorkload(workRes.data.data);
+      setCaseRegister(Array.isArray(regRes.data?.data) ? regRes.data.data : []);
+      setWorkload(Array.isArray(workRes.data?.data) ? workRes.data.data : []);
     } catch (err) {
       console.error(err);
+      setCaseRegister([]);
+      setWorkload([]);
     } finally {
       setIsLoading(false);
     }

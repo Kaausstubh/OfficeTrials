@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { MainLayout } from './components/layout/MainLayout';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { CasesPage } from './pages/CasesPage';
@@ -44,39 +45,41 @@ const RoleRootRedirect: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
+    <ErrorBoundary fallbackTitle="Advocate Practice Desk System">
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
 
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <MainLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<RoleRootRedirect />} />
-            <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="cases" element={<CasesPage />} />
-            <Route path="cases/:caseId" element={<CaseDetailPage />} />
-            <Route path="calendar" element={<CalendarPage />} />
-            <Route path="documents" element={<DocumentsPage />} />
-            <Route path="efiling" element={<EFilingPage />} />
-            <Route path="evidence" element={<EvidencePage />} />
-            <Route path="tasks" element={<TasksPage />} />
-            <Route path="clients" element={<ReportsPage />} />
-            <Route path="client-portal" element={<ClientPortalPage />} />
-            <Route path="messages" element={<MessagesPage />} />
-            <Route path="reports" element={<ReportsPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-          </Route>
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <MainLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<RoleRootRedirect />} />
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="cases" element={<CasesPage />} />
+              <Route path="cases/:caseId" element={<CaseDetailPage />} />
+              <Route path="calendar" element={<CalendarPage />} />
+              <Route path="documents" element={<DocumentsPage />} />
+              <Route path="efiling" element={<EFilingPage />} />
+              <Route path="evidence" element={<EvidencePage />} />
+              <Route path="tasks" element={<TasksPage />} />
+              <Route path="clients" element={<ReportsPage />} />
+              <Route path="client-portal" element={<ClientPortalPage />} />
+              <Route path="messages" element={<MessagesPage />} />
+              <Route path="reports" element={<ReportsPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+            </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 };
 

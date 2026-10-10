@@ -25,14 +25,18 @@ export const TasksPage: React.FC = () => {
       setIsLoading(true);
       const res = await apiClient.get('/cases');
       const allTasks: any[] = [];
-      res.data.data.forEach((c: any) => {
-        c.tasks?.forEach((t: any) =>
-          allTasks.push({ ...t, caseNumber: c.caseNumber, caseTitle: c.title })
-        );
+      const casesList = Array.isArray(res.data?.data) ? res.data.data : [];
+      casesList.forEach((c: any) => {
+        if (Array.isArray(c?.tasks)) {
+          c.tasks.forEach((t: any) =>
+            allTasks.push({ ...t, caseNumber: c.caseNumber, caseTitle: c.title })
+          );
+        }
       });
       setTasks(allTasks);
     } catch (err) {
       console.error(err);
+      setTasks([]);
     } finally {
       setIsLoading(false);
     }

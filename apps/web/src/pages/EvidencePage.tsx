@@ -30,16 +30,23 @@ export const EvidencePage: React.FC = () => {
       const allE: any[] = [];
       const allB: any[] = [];
 
-      res.data.data.forEach((c: any) => {
-        c.witnesses?.forEach((w: any) =>
-          allW.push({ ...w, caseNumber: c.caseNumber, caseId: c.id })
-        );
-        c.exhibits?.forEach((e: any) =>
-          allE.push({ ...e, caseNumber: c.caseNumber, caseId: c.id })
-        );
-        c.bailRecords?.forEach((b: any) =>
-          allB.push({ ...b, caseNumber: c.caseNumber, caseId: c.id })
-        );
+      const casesList = Array.isArray(res.data?.data) ? res.data.data : [];
+      casesList.forEach((c: any) => {
+        if (Array.isArray(c?.witnesses)) {
+          c.witnesses.forEach((w: any) =>
+            allW.push({ ...w, caseNumber: c.caseNumber, caseId: c.id })
+          );
+        }
+        if (Array.isArray(c?.exhibits)) {
+          c.exhibits.forEach((e: any) =>
+            allE.push({ ...e, caseNumber: c.caseNumber, caseId: c.id })
+          );
+        }
+        if (Array.isArray(c?.bailRecords)) {
+          c.bailRecords.forEach((b: any) =>
+            allB.push({ ...b, caseNumber: c.caseNumber, caseId: c.id })
+          );
+        }
       });
 
       setWitnesses(allW);

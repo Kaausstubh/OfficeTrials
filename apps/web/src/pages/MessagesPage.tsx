@@ -26,12 +26,14 @@ export const MessagesPage: React.FC = () => {
     try {
       setIsLoading(true);
       const res = await apiClient.get('/cases');
-      setCases(res.data.data);
-      if (res.data.data.length > 0) {
-        selectCase(res.data.data[0]);
+      const list = Array.isArray(res.data?.data) ? res.data.data : [];
+      setCases(list);
+      if (list.length > 0) {
+        selectCase(list[0]);
       }
     } catch (err) {
       console.error(err);
+      setCases([]);
     } finally {
       setIsLoading(false);
     }
@@ -41,9 +43,11 @@ export const MessagesPage: React.FC = () => {
     setSelectedCase(c);
     try {
       const res = await apiClient.get(`/cases/${c.id}/messages`);
-      setMessages(res.data.data);
+      const msgList = Array.isArray(res.data?.data) ? res.data.data : [];
+      setMessages(msgList);
     } catch (err) {
       console.error(err);
+      setMessages([]);
     }
   };
 

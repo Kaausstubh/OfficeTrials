@@ -26,15 +26,16 @@ export const CalendarPage: React.FC = () => {
     try {
       setIsLoading(true);
       const res = await apiClient.get('/calendar');
-      setHearings(res.data.data);
+      setHearings(Array.isArray(res.data?.data) ? res.data.data : []);
     } catch (err) {
       console.error(err);
+      setHearings([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const conflictsCount = hearings.filter(h => h.hasConflict).length;
+  const conflictsCount = (hearings || []).filter(h => h?.hasConflict).length;
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { CaseDocument } from '../types';
 import { DocumentViewerModal } from '../components/viewer/DocumentViewerModal';
+import { LayoutOutletContext } from '../components/layout/MainLayout';
 import {
   FileText,
   Search,
@@ -27,6 +28,9 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ onOpenScanner }) =
 
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
+  const outletCtx = useOutletContext<LayoutOutletContext>() || {};
+  const handleOpenScanner = onOpenScanner || outletCtx.onOpenScanner;
+
   useEffect(() => {
     loadDocuments();
   }, []);
@@ -35,7 +39,8 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ onOpenScanner }) =
     try {
       setIsLoading(true);
       const res = await apiClient.get('/cases/documents/all');
-      const docs = res.data.data.map((d: any) => ({
+      const rawList = Array.isArray(res.data?.data) ? res.data.data : [];
+      const docs = rawList.map((d: any) => ({
         ...d,
         caseNumber: d.case?.caseNumber || d.caseNumber || 'General Chamber',
         caseTitle: d.case?.title || d.caseTitle || '',
@@ -47,8 +52,9 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ onOpenScanner }) =
       try {
         const res = await apiClient.get('/cases');
         const allDocs: any[] = [];
-        res.data.data.forEach((c: any) => {
-          if (c.documents) {
+        const casesList = Array.isArray(res.data?.data) ? res.data.data : [];
+        casesList.forEach((c: any) => {
+          if (Array.isArray(c.documents)) {
             c.documents.forEach((d: any) => {
               allDocs.push({ ...d, caseNumber: c.caseNumber, caseTitle: c.title });
             });
@@ -57,17 +63,21 @@ export const DocumentsPage: React.FC<DocumentsPageProps> = ({ onOpenScanner }) =
         setDocuments(allDocs);
       } catch (e) {
         console.error(e);
+        setDocuments([]);
       }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const filteredDocs = documents.filter(d => {
+  const filteredDocs = (documents || []).filter(d => {
+    const name = d?.displayName || '';
+    const cat = d?.category?.name || '';
+    const cNum = d?.caseNumber || '';
     const matchesSearch =
-      d.displayName.toLowerCase().includes(search.toLowerCase()) ||
-      d.category?.name?.toLowerCase().includes(search.toLowerCase()) ||
-      d.caseNumber?.toLowerCase().includes(search.toLowerCase()) ||
+      name.toLowerCase().includes(search.toLowerCase()) ||
+      cat.toLowerCase().includes(search.toLowerCase()) ||
+      cNum.toLowerCase().includes(search.toLowerCase());
       (d.caseTitle && d.caseTitle.toLowerCase().includes(search.toLowerCase()));
 
     const matchesCategory =

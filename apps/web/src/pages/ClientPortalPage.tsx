@@ -84,7 +84,8 @@ export const ClientPortalPage: React.FC = () => {
     );
   }
 
-  const { cases } = portalData;
+  const cases = Array.isArray(portalData?.cases) ? portalData.cases : [];
+  const clientInfo = portalData?.client || { fullName: user?.fullName || 'Litigant Client' };
 
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-6xl mx-auto pb-24 md:pb-6">
@@ -95,7 +96,7 @@ export const ClientPortalPage: React.FC = () => {
           <span>Authorized Litigant Portal</span>
         </div>
         <h2 className="font-serif font-bold text-xl sm:text-2xl tracking-tight">
-          Welcome, {portalData.client?.fullName}
+          Welcome, {clientInfo.fullName}
         </h2>
         <p className="text-xs text-slate-300 mt-1 max-w-xl leading-relaxed">
           Track plain-English progress updates, view upcoming court appearances, and securely upload requested case records to your legal counsel.

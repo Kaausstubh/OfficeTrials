@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { Case, CaseType, ProceduralStage, CasePriority } from '../types';
+import { LayoutOutletContext } from '../components/layout/MainLayout';
 import {
   Briefcase,
   Search,
@@ -27,6 +28,9 @@ export const CasesPage: React.FC<CasesPageProps> = ({ onOpenNewCase }) => {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
+  const outletCtx = useOutletContext<LayoutOutletContext>() || {};
+  const handleOpenNewCase = onOpenNewCase || outletCtx.onOpenNewCase;
+
   useEffect(() => {
     loadCases();
   }, [search, selectedType, selectedStage]);
@@ -41,9 +45,11 @@ export const CasesPage: React.FC<CasesPageProps> = ({ onOpenNewCase }) => {
           stage: selectedStage || undefined,
         },
       });
-      setCases(res.data.data);
+      const list = Array.isArray(res.data?.data) ? res.data.data : [];
+      setCases(list);
     } catch (err) {
       console.error(err);
+      setCases([]);
     } finally {
       setIsLoading(false);
     }
@@ -62,10 +68,11 @@ export const CasesPage: React.FC<CasesPageProps> = ({ onOpenNewCase }) => {
           </p>
         </div>
 
-        {onOpenNewCase && (
+        {handleOpenNewCase && (
           <button
-            onClick={onOpenNewCase}
-            className="self-start sm:self-auto flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-navy hover:bg-navy-light rounded-lg shadow-sm transition-colors w-full sm:w-auto"
+            type="button"
+            onClick={handleOpenNewCase}
+            className="self-start sm:self-auto flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-navy hover:bg-navy-light rounded-lg shadow-sm transition-colors w-full sm:w-auto cursor-pointer"
           >
             <Plus className="w-4 h-4 text-amber-400" />
             <span>Register New Case</span>
