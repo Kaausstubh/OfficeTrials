@@ -1,0 +1,29 @@
+{
+  "name": "advocate-case-desk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Advocate Case Desk - Complete Legal Practice Management, eCourts Integration, Document Digitization, e-Filing Records, and Client Portal",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:api": "npm run dev --workspace=@advocate-desk/api",
+    "dev:web": "npm run dev --workspace=@advocate-desk/web",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "seed": "npm run seed --workspace=@advocate-desk/api",
+    "db:migrate": "npm run db:migrate --workspace=@advocate-desk/api",
+    "db:generate": "npm run db:generate --workspace=@advocate-desk/api"
+  },
+  "keywords": [
+    "legal",
+    "advocate",
+    "litigation",
+    "ecourts",
+    "ocr",
+    "efiling"
+  ],
+  "author": "Antigravity Engineering",
+  "license": "UNLICENSED"
+}

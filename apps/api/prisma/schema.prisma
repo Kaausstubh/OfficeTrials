@@ -1,0 +1,968 @@
+// Advocate Case Desk - Complete Legal Practice Management Database Schema
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// -------------------------------------------------------------
+// ENUMS
+// -------------------------------------------------------------
+
+enum UserRole {
+  ADVOCATE
+  ASSOCIATE_ADVOCATE
+  LEGAL_STAFF
+  CLIENT
+  ADMINISTRATOR
+}
+
+enum CaseType {
+  CIVIL_SUIT
+  CRIMINAL_CASE
+  WRIT_PETITION
+  SPECIAL_LEAVE_PETITION
+  COMMERCIAL_DISPUTE
+  COMPANY_PETITION
+  FAMILY_MATRIMONIAL
+  MOTOR_ACCIDENT_CLAIM
+  CONSUMER_DISPUTE
+  REVENUE_APPEAL
+  ARBITRATION_MATTER
+  LABOUR_EMPLOYMENT
+  TAXATION_APPEAL
+  OTHER
+}
+
+enum CasePriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum CaseHealth {
+  GOOD
+  ATTENTION_NEEDED
+  CRITICAL_OVERDUE
+}
+
+enum ProceduralStage {
+  PRE_FILING_CONSULTATION
+  DRAFTING_VERIFICATION
+  E_FILING_SCRUTINY
+  REGISTRATION_SUMMONS
+  PRE_ADMISSION_HEARING
+  WRITTEN_STATEMENT_REPLY
+  FRAMING_OF_ISSUES_CHARGES
+  PETITIONER_PROSECUTION_EVIDENCE
+  RESPONDENT_DEFENCE_EVIDENCE
+  FINAL_ARGUMENTS
+  RESERVED_FOR_JUDGMENT
+  ORDER_PRONOUNCED
+  DECREE_DRAWING
+  EXECUTION_COMPLIANCE
+  APPEAL_REVISION_PERIOD
+  DISPOSED_CLOSED
+}
+
+enum CaseStatus {
+  PENDING
+  DISPOSED_FAVOR
+  DISPOSED_AGAINST
+  DISPOSED_SETTLED
+  DISMISSED
+  TRANSFERRED
+  STAYED
+  ARCHIVED
+}
+
+enum PartyType {
+  PETITIONER
+  COMPLAINANT
+  PLAINTIFF
+  APPELLANT
+  RESPONDENT
+  DEFENDANT
+  ACCUSED
+  PROSECUTION
+  INTERVENOR
+  THIRD_PARTY
+}
+
+enum HearingAttendanceStatus {
+  ATTENDED
+  DID_NOT_ATTEND
+  APPEARED_THROUGH_COLLEAGUE
+  NOT_RECORDED
+}
+
+enum DateVerificationStatus {
+  OFFICIAL_VERIFIED
+  MANUALLY_ENTERED
+  AWAITING_VERIFICATION
+  SUPERSEDED_CANCELLED
+}
+
+enum DocumentVisibility {
+  ADVOCATE_ONLY
+  CLIENT_VISIBLE
+  RESTRICTED_SHARED
+}
+
+enum OCRProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  LOW_CONFIDENCE
+  FAILED
+  SKIPPED_TEXT_PRESENT
+}
+
+enum EfilingStatus {
+  SAVED_IN_CASE_FILE
+  PREPARED_FOR_FILING
+  SUBMITTED_TO_PORTAL
+  ACKNOWLEDGEMENT_RECEIVED
+  DEFECTS_RAISED
+  RESUBMISSION_REQUIRED
+  ACCEPTED_REGISTERED
+  REJECTED
+  WITHDRAWN
+}
+
+enum WitnessType {
+  PROSECUTION_WITNESS
+  DEFENCE_WITNESS
+  COURT_WITNESS
+  EXPERT_WITNESS
+  CHARACTER_WITNESS
+}
+
+enum ExaminationStage {
+  NOT_EXAMINED
+  EXAMINATION_IN_CHIEF
+  CROSS_EXAMINATION
+  RE_EXAMINATION
+  COMPLETED
+}
+
+enum BailType {
+  ANTICIPATORY
+  REGULAR
+  INTERIM
+  DEFAULT_STATUTORY
+}
+
+enum BailStatus {
+  FILED
+  PENDING
+  GRANTED
+  REJECTED
+  CANCELLED
+  EXPIRED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  AWAITING_REVIEW
+  COMPLETED
+  CANCELLED
+}
+
+enum MessageSenderType {
+  ADVOCATE
+  CLIENT
+  SYSTEM
+}
+
+enum SyncStatus {
+  SUCCESS
+  FAILED
+  PARTIAL
+  SKIPPED
+}
+
+// -------------------------------------------------------------
+// CORE AUTH & USER MANAGEMENT
+// -------------------------------------------------------------
+
+model User {
+  id               String       @id @default(uuid())
+  email            String       @unique
+  passwordHash     String
+  fullName         String
+  phone            String?
+  role             UserRole     @default(ADVOCATE)
+  isActive         Boolean      @default(true)
+  isMfaEnabled     Boolean      @default(false)
+  mfaSecret        String?
+  avatarUrl        String?
+  organizationId   String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  advocateProfile  AdvocateProfile?
+  clientProfile    ClientProfile?
+  sessions         UserSession[]
+  auditLogs        AuditLog[]
+  assignedCases    CaseAssignment[]
+  createdCases     Case[]            @relation("CaseCreatedBy")
+  hearingsAttended HearingAttendance[]
+  uploadedDocs     CaseDocument[]    @relation("DocumentUploadedBy")
+  assignedTasks    Task[]            @relation("TaskAssignedTo")
+  createdTasks     Task[]            @relation("TaskCreatedBy")
+  sentMessages     ClientMessage[]   @relation("MessageSender")
+  notifications    Notification[]
+  aiQueries        AIQueryLog[]
+
+  @@index([role])
+  @@index([organizationId])
+}
+
+model UserSession {
+  id           String    @id @default(uuid())
+  userId       String
+  tokenHash    String    @unique
+  ipAddress    String?
+  userAgent    String?
+  expiresAt    DateTime
+  isRevoked    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  lastActiveAt DateTime  @default(now())
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model AdvocateProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  barCouncilNumber String?
+  enrollmentYear  Int?
+  specialization  String?
+  officeAddress   String?
+  city            String?
+  state           String?
+  isSeniorAdvocate Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ClientProfile {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  companyName    String?
+  idProofType    String?
+  idProofNumber  String?
+  emergencyContact String?
+  address        String?
+  preferredLang  String   @default("en")
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// -------------------------------------------------------------
+// COURT & JURISDICTION REPOSITORY
+// -------------------------------------------------------------
+
+model Court {
+  id            String   @id @default(uuid())
+  name          String
+  establishment String
+  courtType     String   // Supreme Court, High Court, District Court, Sessions Court, Tribunal
+  state         String
+  district      String
+  complexCode   String?
+  courtHallNo   String?
+  benchDesignation String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  cases         Case[]
+  hearings      Hearing[]
+
+  @@unique([name, establishment, district])
+  @@index([state, district])
+}
+
+// -------------------------------------------------------------
+// CASE MANAGEMENT
+// -------------------------------------------------------------
+
+model Case {
+  id                 String            @id @default(uuid())
+  internalCaseNo     String            @unique
+  cnrNumber          String?           @unique
+  caseType           CaseType
+  caseNumber         String
+  registrationYear   Int
+  courtId            String
+  courtEstablishment String?
+  judgeDesignation   String?
+  filingDate         DateTime?
+  registrationDate   DateTime?
+  proceduralStage    ProceduralStage   @default(PRE_FILING_CONSULTATION)
+  status             CaseStatus        @default(PENDING)
+  priority           CasePriority      @default(MEDIUM)
+  health             CaseHealth        @default(GOOD)
+  
+  title              String
+  description        String?
+  statutoryActs      String?           // e.g. IPC, CrPC, CPC, Negotiable Instruments Act
+  statutorySections  String?           // e.g. Sec 138, Sec 420, 406
+  policeStation      String?
+  firNumber          String?
+  firYear            Int?
+  
+  nextHearingDate    DateTime?
+  nextHearingPurpose String?
+  dateVerification   DateVerificationStatus @default(MANUALLY_ENTERED)
+  
+  privateNotes       String?           // Confidential notes never visible to client
+  clientGuidanceNotes String?          // Friendly notes visible to client
+  isArchived         Boolean           @default(false)
+  createdById        String
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  court              Court             @relation(fields: [courtId], references: [id])
+  createdBy          User              @relation("CaseCreatedBy", fields: [createdById], references: [id])
+  parties            CaseParty[]
+  assignments        CaseAssignment[]
+  stageHistory       CaseStageHistory[]
+  hearings           Hearing[]
+  documents          CaseDocument[]
+  orders             CourtOrder[]
+  witnesses          Witness[]
+  exhibits           Exhibit[]
+  bailRecords        BailRecord[]
+  efilingRecords     EfilingRecord[]
+  tasks              Task[]
+  messages           ClientMessage[]
+  documentRequests   DocumentRequest[]
+  syncHistory        ExternalCaseSync[]
+  connectedSource    ConnectedCase[]   @relation("SourceCase")
+  connectedTarget    ConnectedCase[]   @relation("TargetCase")
+
+  @@index([cnrNumber])
+  @@index([caseType, registrationYear])
+  @@index([status, proceduralStage])
+  @@index([nextHearingDate])
+}
+
+model ConnectedCase {
+  id             String   @id @default(uuid())
+  sourceCaseId   String
+  targetCaseId   String
+  relationType   String   // Cross-Case, Lower Court Reference, Appellate Reference, Counter Suit
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  sourceCase     Case     @relation("SourceCase", fields: [sourceCaseId], references: [id], onDelete: Cascade)
+  targetCase     Case     @relation("TargetCase", fields: [targetCaseId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceCaseId, targetCaseId])
+}
+
+model CaseParty {
+  id           String    @id @default(uuid())
+  caseId       String
+  partyType    PartyType
+  name         String
+  isOurClient  Boolean   @default(false)
+  phone        String?
+  email        String?
+  address      String?
+  advocateName String?
+  advocateBarNo String?
+  remarks      String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  case         Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+}
+
+model CaseAssignment {
+  id           String   @id @default(uuid())
+  caseId       String
+  userId       String
+  roleInCase   String   // Lead Counsel, Associate, Assisting Advocate, Case Coordinator
+  canEdit      Boolean  @default(true)
+  canViewNotes Boolean  @default(true)
+  assignedAt   DateTime @default(now())
+
+  case         Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, userId])
+}
+
+model CaseStageHistory {
+  id         String          @id @default(uuid())
+  caseId     String
+  stage      ProceduralStage
+  changedAt  DateTime        @default(now())
+  remarks    String?
+  recordedBy String?
+
+  case       Case            @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+}
+
+// -------------------------------------------------------------
+// HEARINGS & CHRONOLOGY
+// -------------------------------------------------------------
+
+model Hearing {
+  id                 String                 @id @default(uuid())
+  caseId             String
+  courtId            String
+  hearingDate        DateTime
+  purpose            String
+  proceedings        String?
+  workPerformed      String?
+  orderPassed        String?
+  nextHearingDate    DateTime?
+  nextHearingPurpose String?
+  pendingWork        String?
+  documentsRequired  String?
+  clientActionNeeded String?
+  privateNotes       String?                // Confidential advocate notes
+  clientSummary      String?                // Safe summary visible to client
+  dateVerification   DateVerificationStatus @default(MANUALLY_ENTERED)
+  isCompleted        Boolean                @default(false)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  case               Case                   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  court              Court                  @relation(fields: [courtId], references: [id])
+  attendances        HearingAttendance[]
+  notes              HearingNote[]
+  orders             CourtOrder[]
+  tasks              Task[]
+
+  @@index([caseId, hearingDate])
+  @@index([nextHearingDate])
+}
+
+model HearingAttendance {
+  id           String                  @id @default(uuid())
+  hearingId    String
+  userId       String
+  status       HearingAttendanceStatus @default(NOT_RECORDED)
+  remarks      String?
+  createdAt    DateTime                @default(now())
+
+  hearing      Hearing                 @relation(fields: [hearingId], references: [id], onDelete: Cascade)
+  user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([hearingId, userId])
+}
+
+model HearingNote {
+  id         String   @id @default(uuid())
+  hearingId  String
+  authorId   String
+  noteText   String
+  isPrivate  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  hearing    Hearing  @relation(fields: [hearingId], references: [id], onDelete: Cascade)
+
+  @@index([hearingId])
+}
+
+// -------------------------------------------------------------
+// DOCUMENT DIGITIZATION & OCR
+// -------------------------------------------------------------
+
+model DocumentCategory {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  code        String   @unique
+  description String?
+  isCustom    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  documents   CaseDocument[]
+}
+
+model CaseDocument {
+  id               String               @id @default(uuid())
+  caseId           String
+  categoryId       String
+  displayName      String
+  originalFilename String
+  fileType         String               // application/pdf, image/jpeg, image/png
+  fileSize         Int
+  pageCount        Int                  @default(1)
+  storagePath      String
+  checksumSha256   String               // Tamper verification & deduplication
+  visibility       DocumentVisibility   @default(ADVOCATE_ONLY)
+  ocrStatus        OCRProcessingStatus  @default(PENDING)
+  ocrConfidence    Float?
+  language         String?              @default("eng")
+  description      String?
+  documentDate     DateTime?
+  uploadedById     String
+  versionNumber    Int                  @default(1)
+  isDerivation     Boolean              @default(false)
+  parentDocId      String?
+  isDeleted        Boolean              @default(false)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  case             Case                 @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  category         DocumentCategory     @relation(fields: [categoryId], references: [id])
+  uploadedBy       User                 @relation("DocumentUploadedBy", fields: [uploadedById], references: [id])
+  versions         DocumentVersion[]
+  tags             DocumentTag[]
+  extractedPages   ExtractedDocumentText[]
+  processingJobs   DocumentProcessingJob[]
+  efilingDocs      EfilingDocument[]
+  orders           CourtOrder[]
+  exhibit          Exhibit?
+
+  @@index([caseId])
+  @@index([checksumSha256])
+  @@index([visibility])
+  @@index([ocrStatus])
+}
+
+model DocumentVersion {
+  id             String       @id @default(uuid())
+  documentId     String
+  versionNumber  Int
+  storagePath    String
+  fileSize       Int
+  checksumSha256 String
+  changeSummary  String?
+  createdById    String
+  createdAt      DateTime     @default(now())
+
+  document       CaseDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, versionNumber])
+}
+
+model DocumentTag {
+  id         String       @id @default(uuid())
+  documentId String
+  tagName    String
+
+  document   CaseDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, tagName])
+  @@index([tagName])
+}
+
+model ExtractedDocumentText {
+  id           String       @id @default(uuid())
+  documentId   String
+  pageNumber   Int
+  extractedText String
+  confidence   Float?
+  isOcr        Boolean      @default(true)
+  language     String?
+  createdAt    DateTime     @default(now())
+
+  document     CaseDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, pageNumber])
+  @@index([documentId])
+}
+
+model DocumentProcessingJob {
+  id          String              @id @default(uuid())
+  documentId  String
+  jobType     String              // OCR, PDF_EXTRACTION, THUMBNAIL, MALWARE_SCAN
+  status      OCRProcessingStatus @default(PENDING)
+  progress    Int                 @default(0)
+  errorMessage String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime            @default(now())
+
+  document    CaseDocument        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([status])
+}
+
+// -------------------------------------------------------------
+// COURT ORDERS & JUDGMENTS
+// -------------------------------------------------------------
+
+model CourtOrder {
+  id           String    @id @default(uuid())
+  caseId       String
+  hearingId    String?
+  documentId   String?
+  orderDate    DateTime
+  orderType    String    // Daily Order, Interim Stay, Bail Order, Final Judgment, Decree
+  judgeName    String?
+  orderSummary String
+  fullText     String?
+  isSharedWithClient Boolean @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  case         Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  hearing      Hearing?  @relation(fields: [hearingId], references: [id], onDelete: SetNull)
+  document     CaseDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  @@index([caseId, orderDate])
+}
+
+// -------------------------------------------------------------
+// EVIDENCE, WITNESSES & EXHIBITS
+// -------------------------------------------------------------
+
+model Witness {
+  id           String           @id @default(uuid())
+  caseId       String
+  witnessNumber String          // e.g. PW-1, DW-2, CW-1
+  name         String
+  witnessType  WitnessType      @default(PROSECUTION_WITNESS)
+  currentStage ExaminationStage @default(NOT_EXAMINED)
+  testimonySummary String?
+  mobile       String?
+  address      String?
+  remarks      String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  case         Case             @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  depositions  Deposition[]
+
+  @@unique([caseId, witnessNumber])
+}
+
+model Deposition {
+  id               String           @id @default(uuid())
+  witnessId        String
+  examinationType  ExaminationStage
+  depositionDate   DateTime
+  transcriptSummary String
+  keyAdmissions    String?
+  contradictions   String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  witness          Witness          @relation(fields: [witnessId], references: [id], onDelete: Cascade)
+
+  @@index([witnessId])
+}
+
+model Exhibit {
+  id             String        @id @default(uuid())
+  caseId         String
+  documentId     String?       @unique
+  exhibitNumber  String        // e.g. Exh P-1, Exh D-3
+  description    String
+  markedBy       String        // Prosecution, Defence, Petitioner
+  markingDate    DateTime?
+  objectionRaised Boolean       @default(false)
+  objectionDetails String?
+  custodyDetails String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  case           Case          @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  document       CaseDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  @@unique([caseId, exhibitNumber])
+}
+
+// -------------------------------------------------------------
+// BAIL & COMPLIANCE RECORDS
+// -------------------------------------------------------------
+
+model BailRecord {
+  id             String              @id @default(uuid())
+  caseId         String
+  accusedName    String
+  bailType       BailType
+  status         BailStatus          @default(PENDING)
+  applicationDate DateTime
+  orderDate      DateTime?
+  bailConditions String?
+  suretyCount    Int                 @default(0)
+  suretyAmount   Float?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  case           Case                @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  sureties       SuretyRecord[]
+  conditions     ComplianceCondition[]
+
+  @@index([caseId])
+}
+
+model SuretyRecord {
+  id             String     @id @default(uuid())
+  bailRecordId   String
+  suretyName     String
+  relationship   String?
+  idProofType    String?
+  idProofNumber  String?
+  propertyDetails String?
+  bondAmount     Float
+  solvencyStatus String?
+  verificationDate DateTime?
+  createdAt      DateTime   @default(now())
+
+  bailRecord     BailRecord @relation(fields: [bailRecordId], references: [id], onDelete: Cascade)
+
+  @@index([bailRecordId])
+}
+
+model ComplianceCondition {
+  id            String     @id @default(uuid())
+  bailRecordId  String
+  conditionText String
+  frequency     String?    // e.g. "Every Monday 10 AM at Police Station"
+  nextDueDate   DateTime?
+  isComplied    Boolean    @default(false)
+  remarks       String?
+  createdAt     DateTime   @default(now())
+
+  bailRecord    BailRecord @relation(fields: [bailRecordId], references: [id], onDelete: Cascade)
+
+  @@index([bailRecordId])
+}
+
+// -------------------------------------------------------------
+// E-FILING RECORDS & LIFECYCLE
+// -------------------------------------------------------------
+
+model EfilingRecord {
+  id                   String                 @id @default(uuid())
+  caseId               String
+  filingType           String                 // Plaint, Bail Application, Written Statement, Vakalatnama, Interim Application
+  filingTitle          String
+  portalName           String                 // eCourts Services, High Court e-Filing 3.0, NCLT e-Filing
+  portalUrl            String?
+  diaryNumber          String?
+  filingNumber         String?
+  acknowledgementNumber String?
+  submissionDate       DateTime?
+  currentStatus        EfilingStatus          @default(SAVED_IN_CASE_FILE)
+  defectDetails        String?
+  defectDeadline       DateTime?
+  resubmissionDate     DateTime?
+  acceptanceDate       DateTime?
+  notes                String?
+  createdById          String
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  case                 Case                   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  documents            EfilingDocument[]
+  statusHistory        EfilingStatusHistory[]
+
+  @@index([caseId])
+  @@index([currentStatus])
+}
+
+model EfilingDocument {
+  id              String        @id @default(uuid())
+  efilingRecordId String
+  documentId      String
+  sequenceOrder   Int           @default(1)
+  isReceipt       Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+
+  efilingRecord   EfilingRecord @relation(fields: [efilingRecordId], references: [id], onDelete: Cascade)
+  document        CaseDocument  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([efilingRecordId, documentId])
+}
+
+model EfilingStatusHistory {
+  id              String        @id @default(uuid())
+  efilingRecordId String
+  previousStatus  EfilingStatus?
+  newStatus       EfilingStatus
+  changeNote      String?
+  changedBy       String
+  changedAt       DateTime      @default(now())
+
+  efilingRecord   EfilingRecord @relation(fields: [efilingRecordId], references: [id], onDelete: Cascade)
+
+  @@index([efilingRecordId])
+}
+
+// -------------------------------------------------------------
+// TASKS & DEADLINES
+// -------------------------------------------------------------
+
+model Task {
+  id            String       @id @default(uuid())
+  caseId        String?
+  hearingId     String?
+  title         String
+  description   String?
+  assignedToId  String
+  createdById   String
+  priority      TaskPriority @default(MEDIUM)
+  status        TaskStatus   @default(TODO)
+  dueDate       DateTime
+  completedAt   DateTime?
+  isLimitation  Boolean      @default(false)
+  limitationAct String?
+  verifiedByAdvocate Boolean @default(false)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  case          Case?        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  hearing       Hearing?     @relation(fields: [hearingId], references: [id], onDelete: SetNull)
+  assignedTo    User         @relation("TaskAssignedTo", fields: [assignedToId], references: [id])
+  createdBy     User         @relation("TaskCreatedBy", fields: [createdById], references: [id])
+
+  @@index([assignedToId, dueDate])
+  @@index([caseId])
+  @@index([status])
+}
+
+// -------------------------------------------------------------
+// CLIENT COMMUNICATION & DOCUMENT REQUESTS
+// -------------------------------------------------------------
+
+model ClientMessage {
+  id          String            @id @default(uuid())
+  caseId      String
+  senderId    String
+  senderType  MessageSenderType
+  messageText String
+  isRead      Boolean           @default(false)
+  readAt      DateTime?
+  createdAt   DateTime          @default(now())
+
+  case        Case              @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  sender      User              @relation("MessageSender", fields: [senderId], references: [id])
+  attachments MessageAttachment[]
+
+  @@index([caseId, createdAt])
+}
+
+model MessageAttachment {
+  id          String        @id @default(uuid())
+  messageId   String
+  fileName    String
+  fileSize    Int
+  fileType    String
+  storagePath String
+  createdAt   DateTime      @default(now())
+
+  message     ClientMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+}
+
+model DocumentRequest {
+  id          String   @id @default(uuid())
+  caseId      String
+  requestedTitle String
+  description String?
+  isMandatory Boolean  @default(true)
+  deadline    DateTime?
+  isUploaded  Boolean  @default(false)
+  uploadedDocId String?
+  requestedById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  linkUrl   String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+}
+
+// -------------------------------------------------------------
+// ECOURTS INTEGRATION & AUDITING
+// -------------------------------------------------------------
+
+model ExternalCaseSync {
+  id              String     @id @default(uuid())
+  caseId          String
+  sourceName      String     // eCourts CIS 3.2, High Court Portal, NJDG
+  retrievalDate   DateTime   @default(now())
+  rawPayload      String?    // JSON representation
+  status          SyncStatus @default(SUCCESS)
+  discrepancies   String?    // JSON diff of differences
+  lastSyncHearingDate DateTime?
+  verifiedByUser  Boolean    @default(false)
+
+  case            Case       @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+}
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  userId         String?
+  action         String   // LOGIN, LOGOUT, DOCUMENT_UPLOAD, DOCUMENT_DOWNLOAD, CASE_EXPORT, CASE_EDIT
+  resourceType   String   // Case, CaseDocument, Hearing, EfilingRecord, User
+  resourceId     String?
+  ipAddress      String?
+  userAgent      String?
+  details        String?  // Sanitized details / JSON
+  createdAt      DateTime @default(now())
+
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, action])
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
+}
+
+model AIQueryLog {
+  id             String   @id @default(uuid())
+  userId         String
+  caseId         String?
+  queryPrompt    String
+  responseSummary String?
+  citedDocsCount Int      @default(0)
+  disclaimerShown Boolean @default(true)
+  createdAt      DateTime @default(now())
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, caseId])
+}
